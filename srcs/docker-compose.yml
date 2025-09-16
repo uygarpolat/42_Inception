@@ -1,0 +1,80 @@
+services:
+  mariadb:
+    build: ./requirements/mariadb
+    image: mariadb
+    container_name: mariadb
+    restart: always
+    init: true
+    stop_grace_period: 10s
+    security_opt:
+      - apparmor=unconfined
+    env_file:
+      - .env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    networks:
+      - docker-network
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  wordpress:
+    build: ./requirements/wordpress
+    image: wordpress
+    container_name: wordpress
+    restart: always
+    init: true
+    stop_grace_period: 10s
+    security_opt:
+      - apparmor=unconfined
+    env_file:
+      - .env
+    environment:
+      - DOMAIN_NAME=upolat.42.fr
+      - PUBLIC_HTTPS_PORT=443
+    depends_on:
+      - mariadb
+    networks:
+      - docker-network
+    volumes:
+      - wordpress_data:/var/www/html
+
+  nginx:
+    build: ./requirements/nginx
+    image: nginx
+    container_name: nginx
+    restart: always
+    init: true
+    stop_grace_period: 10s
+    security_opt:
+      - apparmor=unconfined
+    env_file:
+      - .env
+    environment:
+      - DOMAIN_NAME=upolat.42.fr
+      - PUBLIC_HTTPS_PORT=443
+    depends_on:
+      - wordpress
+    networks:
+      - docker-network
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html:ro
+
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/mariadb
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/wordpress
+
+networks:
+  docker-network:
+    driver: bridge
